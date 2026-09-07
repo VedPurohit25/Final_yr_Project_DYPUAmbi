@@ -1,0 +1,9 @@
+tensorflow-cpu
+streamlit
+scikit-learn
+numpy
+pillow
+tqdm
+opencv-python-headless
+flake8
+pytest
