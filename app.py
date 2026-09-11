@@ -3,30 +3,61 @@ import pickle
 import numpy as np
 from numpy.linalg import norm
 from tqdm import tqdm
-import tensorflow
-from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
-from tensorflow.keras.layers import GlobalMaxPooling2D
-from tensorflow.keras.preprocessing import image
+from PIL import Image
 
-IMAGE_DIR = os.path.join('Fashion Recommander System', 'images')
+import torch
+import torchvision.models as models
+import torchvision.transforms as transforms
 
-model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
-model.trainable = False
-model = tensorflow.keras.Sequential([model, GlobalMaxPooling2D()])
+# Updated directory path to match the local sample folder
+IMAGE_DIR = 'images'
+
+# Load ResNet50 model pretrained on ImageNet
+resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+
+# Replace classification head with AdaptiveMaxPool2d
+resnet.fc = torch.nn.Identity()
+model = torch.nn.Sequential(
+    *list(resnet.children())[:-2],
+    torch.nn.AdaptiveMaxPool2d((1, 1)),
+    torch.nn.Flatten()
+)
+model.eval()  # Set model to evaluation mode
+
+# Preprocessing pipeline matching ImageNet standard transformations
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    ),
+])
 
 def extract_features(img_path, model):
-    img = image.load_img(img_path, target_size=(224, 224))
-    img_array = image.img_to_array(img)
-    expanded_img_array = np.expand_dims(img_array, axis=0)
-    preprocessed_img = preprocess_input(expanded_img_array)
-    result = model.predict(preprocessed_img).flatten()
+    img = Image.open(img_path).convert('RGB')
+    tensor_img = transform(img).unsqueeze(0)  # Add batch dimension
+    
+    with torch.no_grad():
+        result = model(tensor_img).squeeze().numpy()
+        
     return result / norm(result)
 
-filenames = [os.path.join(IMAGE_DIR, file) for file in os.listdir(IMAGE_DIR)]
+# Get all valid image file paths
+valid_extensions = ('.jpg', '.jpeg', '.png', '.webp')
+filenames = [
+    os.path.join(IMAGE_DIR, file) 
+    for file in os.listdir(IMAGE_DIR) 
+    if file.lower().endswith(valid_extensions)
+]
 
+# Extract features
 feature_list = []
-for file in tqdm(filenames):
+for file in tqdm(filenames, desc="Extracting Features"):
     feature_list.append(extract_features(file, model))
 
+# Save pickle files
 pickle.dump(feature_list, open('embeddings.pkl', 'wb'))
 pickle.dump(filenames, open('filenames.pkl', 'wb'))
+
+print(f"\nSuccessfully generated embeddings.pkl and filenames.pkl for {len(filenames)} images!")
