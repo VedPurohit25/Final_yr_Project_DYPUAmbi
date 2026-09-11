@@ -9,22 +9,18 @@ import torch
 import torchvision.models as models
 import torchvision.transforms as transforms
 
-# Updated directory path to match the local sample folder
 IMAGE_DIR = 'images'
 
-# Load ResNet50 model pretrained on ImageNet
+# Load ResNet50
 resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
-
-# Replace classification head with AdaptiveMaxPool2d
 resnet.fc = torch.nn.Identity()
 model = torch.nn.Sequential(
     *list(resnet.children())[:-2],
     torch.nn.AdaptiveMaxPool2d((1, 1)),
     torch.nn.Flatten()
 )
-model.eval()  # Set model to evaluation mode
+model.eval()
 
-# Preprocessing pipeline matching ImageNet standard transformations
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -36,28 +32,27 @@ transform = transforms.Compose([
 
 def extract_features(img_path, model):
     img = Image.open(img_path).convert('RGB')
-    tensor_img = transform(img).unsqueeze(0)  # Add batch dimension
+    tensor_img = transform(img).unsqueeze(0)
     
     with torch.no_grad():
         result = model(tensor_img).squeeze().numpy()
         
     return result / norm(result)
 
-# Get all valid image file paths
 valid_extensions = ('.jpg', '.jpeg', '.png', '.webp')
+
+# Convert Windows backslashes (\) to Unix forward slashes (/)
 filenames = [
-    os.path.join(IMAGE_DIR, file) 
+    os.path.join(IMAGE_DIR, file).replace('\\', '/')
     for file in os.listdir(IMAGE_DIR) 
     if file.lower().endswith(valid_extensions)
 ]
 
-# Extract features
 feature_list = []
 for file in tqdm(filenames, desc="Extracting Features"):
     feature_list.append(extract_features(file, model))
 
-# Save pickle files
 pickle.dump(feature_list, open('embeddings.pkl', 'wb'))
 pickle.dump(filenames, open('filenames.pkl', 'wb'))
 
-print(f"\nSuccessfully generated embeddings.pkl and filenames.pkl for {len(filenames)} images!")
+print("Updated embeddings.pkl and filenames.pkl with cross-platform paths!")
