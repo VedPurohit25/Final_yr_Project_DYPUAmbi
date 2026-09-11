@@ -12,7 +12,10 @@ import torchvision.transforms as transforms
 
 # Load precomputed embeddings and image file paths
 feature_list = np.array(pickle.load(open('embeddings.pkl', 'rb')))
-filenames = pickle.load(open('filenames.pkl', 'rb'))
+raw_filenames = pickle.load(open('filenames.pkl', 'rb'))
+
+# Convert Windows backslashes (\) to Unix forward slashes (/) for Linux/Streamlit Cloud
+filenames = [file.replace('\\', '/') for file in raw_filenames]
 
 # Load PyTorch ResNet50 model
 resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
