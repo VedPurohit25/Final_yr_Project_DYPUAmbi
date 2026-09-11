@@ -1,9 +1,6 @@
-tensorflow-cpu
 streamlit
-scikit-learn
-numpy
+torch
+torchvision
 pillow
-tqdm
-opencv-python-headless
-flake8
-pytest
+numpy
+scikit-learn
