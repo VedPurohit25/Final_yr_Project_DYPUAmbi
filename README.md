@@ -22,6 +22,7 @@ A deep learning-powered fashion recommendation web application built with **PyTo
 
 ---
 
+## Deployment link : https://finalyrprojectdypuambi-snds6bnukk7dqmjvhlipet.streamlit.app/
 ## 📁 Project Structure
 
 ```text
