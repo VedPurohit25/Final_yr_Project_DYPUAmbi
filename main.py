@@ -10,7 +10,7 @@ import torch
 import torchvision.models as models
 import torchvision.transforms as transforms
 
-# Load embeddings and filenames
+# Load precomputed embeddings and image file paths
 feature_list = np.array(pickle.load(open('embeddings.pkl', 'rb')))
 filenames = pickle.load(open('filenames.pkl', 'rb'))
 
@@ -55,7 +55,11 @@ def feature_extraction(img_path, model):
     return result / norm(result)
 
 def recommend(features, feature_list):
-    neighbors = NearestNeighbors(n_neighbors=6, algorithm='brute', metric='euclidean')
+    # Dynamically scale n_neighbors to match total dataset size up to 5 recommendations
+    num_samples = len(feature_list)
+    num_neighbors = min(5, num_samples)
+    
+    neighbors = NearestNeighbors(n_neighbors=num_neighbors, algorithm='brute', metric='euclidean')
     neighbors.fit(feature_list)
     distances, indices = neighbors.kneighbors([features])
     return indices
@@ -66,27 +70,23 @@ if uploaded_file is not None:
     if save_uploaded_file(uploaded_file):
         # Display uploaded image
         display_image = Image.open(uploaded_file)
-        st.image(display_image)
+        st.subheader("Uploaded Query Image")
+        st.image(display_image, width=300)
         
         # Extract features
         uploaded_image_path = os.path.join("uploads", uploaded_file.name)
         features = feature_extraction(uploaded_image_path, model)
         
-        # Recommendations
+        # Compute recommendations
         indices = recommend(features, feature_list)
+        recommended_indices = indices[0]
         
-        # Display recommended images
-        col1, col2, col3, col4, col5 = st.columns(5)
-
-        with col1:
-            st.image(filenames[indices[0][0]])
-        with col2:
-            st.image(filenames[indices[0][1]])
-        with col3:
-            st.image(filenames[indices[0][2]])
-        with col4:
-            st.image(filenames[indices[0][3]])
-        with col5:
-            st.image(filenames[indices[0][4]])
+        # Render recommendation results in dynamic grid
+        st.subheader("Recommended Products")
+        if len(recommended_indices) > 0:
+            cols = st.columns(len(recommended_indices))
+            for i, idx in enumerate(recommended_indices):
+                with cols[i]:
+                    st.image(filenames[idx], use_container_width=True)
     else:
-        st.header("Some error occurred in file upload")
+        st.error("Some error occurred during file upload. Please try again.")
